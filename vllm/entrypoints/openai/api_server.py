@@ -373,6 +373,26 @@ async def health(raw_request: Request) -> Response:
     except EngineDeadError:
         return Response(status_code=503)
 
+@router.get("/enable_fault", response_class=Response)
+async def enable_fault(raw_request: Request, rank: int = Query(0, ge=0)) -> Response:
+    client = engine_client(raw_request)
+    max_rank = client.vllm_config.parallel_config.world_size - 1
+    if rank > max_rank:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST.value,
+            detail=f"Rank {rank} is out of range. Max rank: {max_rank}.",
+        )
+    try:
+        await client.collective_rpc(
+            method="enable_fault_injection",
+            kwargs={"target_rank": rank},
+        )
+    except Exception as e:  # pragma: no cover - best-effort hook
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
+            detail=f"Failed to enable fault injection on workers: {e}",
+        ) from e
+    return Response(status_code=200)
 
 @router.get("/load")
 async def get_server_load_metrics(request: Request):

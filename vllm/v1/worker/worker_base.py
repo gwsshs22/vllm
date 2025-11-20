@@ -166,6 +166,20 @@ class WorkerBase:
         """Clean up resources held by the worker."""
         return
 
+    def enable_fault_injection(self, target_rank: int | None = None) -> None:
+        """Enable nvbit fault injection inside the worker process."""
+        if target_rank is not None and target_rank != self.rank:
+            return
+
+        import ftutil
+
+        logger.info(
+            "Enabling fault injection in worker rank %s (PID %s)",
+            self.rank,
+            os.getpid(),
+        )
+        ftutil.enable()
+
 
 class WorkerWrapperBase:
     """
