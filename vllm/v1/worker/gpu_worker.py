@@ -17,7 +17,8 @@ from vllm.distributed import (ensure_model_parallel_initialized,
                               init_distributed_environment,
                               set_custom_all_reduce)
 from vllm.distributed.kv_transfer import ensure_kv_transfer_initialized
-from vllm.distributed.parallel_state import get_pp_group, get_tp_group
+from vllm.distributed.parallel_state import (get_dp_group, get_pp_group,
+                                             get_tp_group)
 from vllm.logger import init_logger
 from vllm.lora.request import LoRARequest
 from vllm.model_executor import set_random_seed
@@ -693,5 +694,23 @@ def init_worker_distributed_environment(
         parallel_config.tensor_parallel_size,
         parallel_config.pipeline_parallel_size,
         parallel_config.decode_context_parallel_size)
+
+    try:
+        from ftutil import fault_injection as fi  # type: ignore
+        dp_rank = get_dp_group().rank_in_group
+        tp_rank = get_tp_group().rank_in_group
+        pp_rank = get_pp_group().rank_in_group
+        fi.load(
+            dp=dp_rank,
+            tp=tp_rank,
+            pp=pp_rank,
+            world_size=parallel_config.world_size_across_dp,
+        )
+    except ImportError:
+        logger.warning(
+            "Fault injection requested but ftutil is not installed; "
+            "skipping fault injection setup.")
+    except Exception:
+        logger.warning("Fault injection setup failed.", exc_info=True)
 
     ensure_kv_transfer_initialized(vllm_config)
