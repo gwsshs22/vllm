@@ -704,7 +704,6 @@ def init_worker_distributed_environment(
             dp=dp_rank,
             tp=tp_rank,
             pp=pp_rank,
-            world_size=parallel_config.world_size_across_dp,
         )
     except ImportError:
         logger.warning(
